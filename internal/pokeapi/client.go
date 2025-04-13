@@ -2,9 +2,13 @@ package pokeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/quockhanhcao/go-pokedex/internal/pokecache"
 )
 
 type Response struct {
@@ -17,8 +21,19 @@ type Response struct {
 	} `json:"results"`
 }
 
+var cache = pokecache.NewCache(10 * time.Second)
+
 func GetLocationAreaData(url string) (Response, error) {
 	data := Response{}
+	cacheData, ok := cache.Get(url)
+	if ok {
+		fmt.Println("Cache hit")
+		err := json.Unmarshal(cacheData, &data)
+		if err != nil {
+			return Response{}, err
+		}
+		return data, nil
+	}
 	res, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err)
@@ -33,6 +48,8 @@ func GetLocationAreaData(url string) (Response, error) {
 		log.Fatal(err)
 		return Response{}, err
 	}
+	// add to cache
+	cache.Add(url, body)
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		log.Fatal(err)

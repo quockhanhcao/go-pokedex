@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
 	"os"
 	"strings"
+	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -116,9 +116,9 @@ func main() {
 func cleanInput(text string) []string {
 	var cleaned []string
 	trimmed := strings.TrimSpace(text)
-	words := strings.SplitSeq(trimmed, " ")
+	words := strings.Split(trimmed, " ")
 
-	for word := range words {
+	for _, word := range words {
 		if word != "" {
 			cleaned = append(cleaned, strings.ToLower(word))
 		} else {
