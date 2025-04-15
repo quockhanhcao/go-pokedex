@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
 	"os"
 	"strings"
-	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -17,6 +17,7 @@ type cliCommand struct {
 type config struct {
 	NextURL     string
 	PreviousURL string
+	Location    string
 }
 
 var supportedCommand map[string]cliCommand
@@ -43,11 +44,17 @@ func init() {
 			description: "Displays previous 20 locations in Pokemon world",
 			callback:    commandMapback,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Explore a location in the Pokemon world",
+			callback:    commandExplore,
+		},
 	}
 }
 
 func commandExit(config *config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
+	pokeapi.CloseCache()
 	os.Exit(0)
 	return nil
 }
@@ -91,19 +98,35 @@ func commandMapback(config *config) error {
 	return nil
 }
 
+func commandExplore(config *config) error {
+	data, err := pokeapi.GetLocationDetailedData(config.Location)
+	if err != nil {
+		return err
+	}
+	for _, pokemonEncounter := range data.PokemonEncounters {
+		fmt.Println(pokemonEncounter.Pokemon.Name)
+	}
+	return nil
+}
+
 func main() {
 	config := config{
 		NextURL:     "https://pokeapi.co/api/v2/location-area",
 		PreviousURL: "",
+		Location:    "",
 	}
+	defer pokeapi.CloseCache()
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
 		data := scanner.Text()
-		cleaned := cleanInput(data)
-		if len(cleaned) > 0 {
-			if command, exists := supportedCommand[cleaned[0]]; exists {
+		cleanedInput := cleanInput(data)
+		if len(cleanedInput) > 0 {
+			if command, exists := supportedCommand[cleanedInput[0]]; exists {
+				if len(cleanedInput) > 1 {
+					config.Location = cleanedInput[1]
+				}
 				command.callback(&config)
 			} else {
 				fmt.Println("Unknown command")
