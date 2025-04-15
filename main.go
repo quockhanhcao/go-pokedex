@@ -64,6 +64,11 @@ func init() {
 			description: "Inspect a Pokemon",
 			callback:    commandInspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "View your caught Pokemon",
+			callback:    commandPokedex,
+		},
 	}
 	caughtPokemon = map[string]pokeapi.Pokemon{}
 }
@@ -153,13 +158,25 @@ func commandInspect(config *config) error {
 	fmt.Printf("Weight: %d\n", data.Weight)
 	fmt.Println("Stats:")
 	for _, stat := range data.Stats {
-		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+		fmt.Printf("  - %s: %d\n", stat.Stat.Name, stat.BaseStat)
 	}
 	fmt.Println("Types:")
 	for _, t := range data.Types {
-		fmt.Printf("  -%s\n", t.Type.Name)
+		fmt.Printf("  - %s\n", t.Type.Name)
 	}
 
+	return nil
+}
+
+func commandPokedex(config *config) error {
+	if len(caughtPokemon) == 0 {
+		fmt.Println("Your Pokedex is empty. Catch some Pokemon first!")
+	} else {
+		fmt.Println("Your Pokedex:")
+		for name, _ := range caughtPokemon {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
 	return nil
 }
 
