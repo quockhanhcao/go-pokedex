@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
+	"math/rand"
 	"os"
 	"strings"
+
+	"github.com/quockhanhcao/go-pokedex/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -18,7 +20,10 @@ type config struct {
 	NextURL     string
 	PreviousURL string
 	Location    string
+	Pokemon     string
 }
+
+var caughtPokemon map[string]pokeapi.Pokemon
 
 var supportedCommand map[string]cliCommand
 
@@ -49,7 +54,18 @@ func init() {
 			description: "Explore a location in the Pokemon world",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Catch a Pokemon",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect a Pokemon",
+			callback:    commandInspect,
+		},
 	}
+	caughtPokemon = map[string]pokeapi.Pokemon{}
 }
 
 func commandExit(config *config) error {
@@ -109,11 +125,50 @@ func commandExplore(config *config) error {
 	return nil
 }
 
+func commandCatch(config *config) error {
+	data, err := pokeapi.GetPokemonStats(config.Pokemon)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Throwing a Pokeball at %s...\n", data.Name)
+	catchChance := 100 - int((float64(data.BaseExperience)/500.0)*100)
+	randNum := rand.Intn(100) + 1
+	if randNum <= catchChance {
+		fmt.Printf("%s was caught!\n", data.Name)
+		caughtPokemon[data.Name] = data
+	} else {
+		fmt.Printf("%s escaped!\n", data.Name)
+	}
+	return nil
+}
+
+func commandInspect(config *config) error {
+	data, err := pokeapi.GetPokemonStats(config.Pokemon)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Name: %s\n", data.Name)
+	fmt.Printf("Height: %d\n", data.Height)
+	fmt.Printf("Weight: %d\n", data.Weight)
+	fmt.Println("Stats:")
+	for _, stat := range data.Stats {
+		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range data.Types {
+		fmt.Printf("  -%s\n", t.Type.Name)
+	}
+
+	return nil
+}
+
 func main() {
 	config := config{
 		NextURL:     "https://pokeapi.co/api/v2/location-area",
 		PreviousURL: "",
 		Location:    "",
+		Pokemon:     "",
 	}
 	defer pokeapi.CloseCache()
 	scanner := bufio.NewScanner(os.Stdin)
@@ -125,7 +180,11 @@ func main() {
 		if len(cleanedInput) > 0 {
 			if command, exists := supportedCommand[cleanedInput[0]]; exists {
 				if len(cleanedInput) > 1 {
-					config.Location = cleanedInput[1]
+					if cleanedInput[0] == "explore" {
+						config.Location = cleanedInput[1]
+					} else if cleanedInput[0] == "catch" || cleanedInput[0] == "inspect" {
+						config.Pokemon = cleanedInput[1]
+					}
 				}
 				command.callback(&config)
 			} else {

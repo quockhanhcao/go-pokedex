@@ -75,6 +75,28 @@ type LocationResponse struct {
 	} `json:"pokemon_encounters"`
 }
 
+type Pokemon struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	Weight         int    `json:"weight"`
+	Height         int    `json:"height"`
+	Stats          []struct {
+		BaseStat int `json:"base_stat"`
+		Effort   int `json:"effort"`
+		Stat     struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"stat"`
+	} `json:"stats"`
+	Types []struct {
+		Slot int `json:"slot"`
+		Type struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"type"`
+	} `json:"types"`
+}
+
 var cache = pokecache.NewCache(10 * time.Second)
 
 func GetLocationAreaData(url string) (Response, error) {
@@ -145,6 +167,43 @@ func GetLocationDetailedData(locationName string) (LocationResponse, error) {
 	if err != nil {
 		log.Fatal(err)
 		return LocationResponse{}, err
+	}
+	return data, nil
+}
+
+func GetPokemonStats(pokemon string) (Pokemon, error) {
+	data := Pokemon{}
+	cacheData, ok := cache.Get(pokemon)
+	if ok {
+		err := json.Unmarshal(cacheData, &data)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		return data, nil
+	}
+	var sb strings.Builder
+	sb.WriteString("https://pokeapi.co/api/v2/pokemon/")
+	sb.WriteString(pokemon)
+	url := sb.String()
+	res, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+		return Pokemon{}, err
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+	if res.StatusCode > 299 {
+		log.Fatalf("Response failed with status code: %d and \nbody: %s\n", res.StatusCode, body)
+	}
+	if err != nil {
+		log.Fatal(err)
+		return Pokemon{}, err
+	}
+	cache.Add(pokemon, body)
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		log.Fatal(err)
+		return Pokemon{}, err
 	}
 	return data, nil
 }
